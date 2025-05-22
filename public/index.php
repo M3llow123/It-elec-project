@@ -1,10 +1,11 @@
 <?php
-// Connect to the MySQL database
-$host = 'localhost'; // Changed from 'db' to 'localhost' for local environment
-$user = 'root';
-$pass = 'rootpassword'; // Use your MySQL password; XAMPP default is usually empty
-$dbname = 'todolist';
+// Use environment variables for DB connection (set these in Render dashboard)
+$host = getenv('DB_HOST') ?: 'db';          // 'db' is default for local Docker, override in Render
+$user = getenv('DB_USER') ?: 'root';
+$pass = getenv('DB_PASS') ?: 'rootpassword';
+$dbname = getenv('DB_NAME') ?: 'todolist';
 
+// Connect to MySQL
 $conn = new mysqli($host, $user, $pass, $dbname);
 
 // Check connection
@@ -12,7 +13,7 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Create todos table if it doesn't exist
+// Create todos table if not exists
 $conn->query("CREATE TABLE IF NOT EXISTS todos (
     id INT AUTO_INCREMENT PRIMARY KEY,
     task VARCHAR(255) NOT NULL,
@@ -24,18 +25,15 @@ $conn->query("CREATE TABLE IF NOT EXISTS todos (
 )");
 
 // CREATE - Add new todo
-if (isset($_POST['add']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
+if (isset($_POST['add']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $conn->prepare("INSERT INTO todos (task, description, status, due_date) VALUES (?, ?, ?, ?)");
     $task = $_POST['task'];
     $description = $_POST['description'];
     $status = $_POST['status'];
-    $due_date = $_POST['due_date'] ?: null; // Allow null if empty
-
+    $due_date = $_POST['due_date'] ?: null;
     $stmt->bind_param("ssss", $task, $description, $status, $due_date);
-
     if ($stmt->execute()) {
-        echo "<script>alert('Todo added successfully');</script>";
-        echo "<script>window.location.href = '" . $_SERVER['PHP_SELF'] . "';</script>";
+        header("Location: " . $_SERVER['PHP_SELF']);
         exit();
     } else {
         echo "<script>alert('Error adding todo: " . $stmt->error . "');</script>";
@@ -44,19 +42,16 @@ if (isset($_POST['add']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 // UPDATE - Edit todo
-if (isset($_POST['update'])) {
+if (isset($_POST['update']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $conn->prepare("UPDATE todos SET task=?, description=?, status=?, due_date=? WHERE id=?");
     $task = $_POST['task'];
     $description = $_POST['description'];
     $status = $_POST['status'];
     $due_date = $_POST['due_date'] ?: null;
     $id = (int)$_POST['id'];
-
     $stmt->bind_param("ssssi", $task, $description, $status, $due_date, $id);
-
     if ($stmt->execute()) {
-        echo "<script>alert('Todo updated successfully');</script>";
-        echo "<script>window.location.href = '" . $_SERVER['PHP_SELF'] . "';</script>";
+        header("Location: " . $_SERVER['PHP_SELF']);
         exit();
     } else {
         echo "<script>alert('Error updating todo: " . $stmt->error . "');</script>";
@@ -70,8 +65,7 @@ if (isset($_GET['delete'])) {
     $stmt = $conn->prepare("DELETE FROM todos WHERE id=?");
     $stmt->bind_param("i", $id);
     if ($stmt->execute()) {
-        echo "<script>alert('Todo deleted successfully');</script>";
-        echo "<script>window.location.href = '" . strtok($_SERVER['REQUEST_URI'], '?') . "';</script>";
+        header("Location: " . strtok($_SERVER['REQUEST_URI'], '?'));
         exit();
     } else {
         echo "<script>alert('Error deleting todo');</script>";
@@ -93,41 +87,16 @@ $result = $conn->query("SELECT * FROM todos ORDER BY status, due_date ASC");
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
   <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      background-color: #f8f9fa;
-    }
-    .main-content {
-      padding: 20px;
-    }
-    .todo-card {
-      transition: all 0.3s ease;
-      margin-bottom: 15px;
-      border-radius: 10px;
-    }
-    .todo-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-    }
-    .status-pending {
-      border-left: 5px solid #ffc107;
-    }
-    .status-in_progress {
-      border-left: 5px solid #17a2b8;
-    }
-    .status-completed {
-      border-left: 5px solid #28a745;
-    }
-    .badge-pending {
-      background-color: #ffc107;
-      color: #212529;
-    }
-    .badge-in_progress {
-      background-color: #17a2b8;
-    }
-    .badge-completed {
-      background-color: #28a745;
-    }
+    body { font-family: 'Poppins', sans-serif; background-color: #f8f9fa; }
+    .main-content { padding: 20px; }
+    .todo-card { transition: all 0.3s ease; margin-bottom: 15px; border-radius: 10px; }
+    .todo-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+    .status-pending { border-left: 5px solid #ffc107; }
+    .status-in_progress { border-left: 5px solid #17a2b8; }
+    .status-completed { border-left: 5px solid #28a745; }
+    .badge-pending { background-color: #ffc107; color: #212529; }
+    .badge-in_progress { background-color: #17a2b8; }
+    .badge-completed { background-color: #28a745; }
   </style>
 </head>
 <body>
@@ -140,7 +109,6 @@ $result = $conn->query("SELECT * FROM todos ORDER BY status, due_date ASC");
       </button>
     </div>
 
-    <!-- Todo List -->
     <div class="row">
       <?php while ($row = $result->fetch_assoc()): ?>
         <div class="col-md-4">
@@ -172,7 +140,7 @@ $result = $conn->query("SELECT * FROM todos ORDER BY status, due_date ASC");
           </div>
         </div>
 
-        <!-- Edit Todo Modal -->
+        <!-- Edit Modal -->
         <div class="modal fade" id="editTodoModal<?= $row['id'] ?>" tabindex="-1" aria-hidden="true">
           <div class="modal-dialog">
             <div class="modal-content">
@@ -206,19 +174,20 @@ $result = $conn->query("SELECT * FROM todos ORDER BY status, due_date ASC");
                   </div>
                 </div>
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                  <button type="submit" name="update" class="btn btn-primary">Save Changes</button>
+                  <button type="submit" name="update" class="btn btn-primary">Update Todo</button>
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 </div>
               </form>
             </div>
           </div>
         </div>
+
       <?php endwhile; ?>
     </div>
   </div>
 </div>
 
-<!-- Add Todo Modal -->
+<!-- Add Modal -->
 <div class="modal fade" id="addTodoModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -230,7 +199,7 @@ $result = $conn->query("SELECT * FROM todos ORDER BY status, due_date ASC");
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label">Task</label>
-            <input type="text" name="task" class="form-control" required />
+            <input type="text" name="task" class="form-control" required>
           </div>
           <div class="mb-3">
             <label class="form-label">Description</label>
@@ -239,26 +208,25 @@ $result = $conn->query("SELECT * FROM todos ORDER BY status, due_date ASC");
           <div class="mb-3">
             <label class="form-label">Status</label>
             <select name="status" class="form-select">
-              <option value="pending">Pending</option>
+              <option value="pending" selected>Pending</option>
               <option value="in_progress">In Progress</option>
               <option value="completed">Completed</option>
             </select>
           </div>
           <div class="mb-3">
             <label class="form-label">Due Date</label>
-            <input type="datetime-local" name="due_date" class="form-control" />
+            <input type="datetime-local" name="due_date" class="form-control">
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="submit" name="add" class="btn btn-primary">Add Todo</button>
+          <button type="submit" name="add" class="btn btn-success">Add Todo</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
