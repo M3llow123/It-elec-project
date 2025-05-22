@@ -2,7 +2,7 @@
 // Connect to the MySQL database
 $host = 'localhost'; // Changed from 'db' to 'localhost' for local environment
 $user = 'root';
-$pass = ''; // Use your MySQL password; XAMPP default is usually empty
+$pass = 'rootpassword'; // Use your MySQL password; XAMPP default is usually empty
 $dbname = 'todolist';
 
 $conn = new mysqli($host, $user, $pass, $dbname);
