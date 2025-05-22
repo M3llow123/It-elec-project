@@ -1,24 +1,18 @@
-version: '3.8'
-
 services:
-  app:
-    build: .
-    ports:
-      - "8080:80"
-    volumes:
-      - ./public:/var/www/html
-    depends_on:
-      - db
-
-  db:
-    image: mariadb:10.4
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: todolist
-    volumes:
-      - db_data:/var/lib/mysql
-      - ./todos.sql:/docker-entrypoint-initdb.d/todos.sql
-
-volumes:
-  db_data:
+  - type: web
+    name: php-todo-app
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    buildCommand: ""
+    startCommand: apache2-foreground
+    envVars:
+      - key: DB_HOST
+        value: your-database-hostname.render.com
+      - key: DB_USER
+        value: root
+      - key: DB_PASS
+        value: your-root-password
+      - key: DB_NAME
+        value: todolist
