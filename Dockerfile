@@ -15,3 +15,5 @@ RUN chown -R www-data:www-data /var/www/html
 
 # Expose default HTTP port
 EXPOSE 80
+
+
